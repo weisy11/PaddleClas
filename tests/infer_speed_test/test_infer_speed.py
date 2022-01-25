@@ -8,19 +8,28 @@ def infer_acc_test():
     pass
 
 
+def normal_test(infer_engine, dataloader, test_iter_num, timer):
+    infer_engine.mode_speed_test()
+    for i in range(test_iter_num):
+        input_data = dataloader.gen_data(i)
+        infer_engine.preprocess(input_data)
+        infer_engine.inference()
+        infer_engine.postprocess()
+
+
 def infer_speed_test(config_dict):
-    warmup_iters = config_dict["Variables"]["warmup_iters"]
-    test_iters = config_dict["Variables"]["test_iters"]
+    warmup_iter_num = config_dict["Variables"]["warmup_iter_num"]
+    test_iter_num = config_dict["Variables"]["test_iter_num"]
+    timer = None
     infer_engine = get_infer_engine(config_dict)
     dataloader = get_dataloader(config_dict)
     infer_engine.mode_warm_up()
-    for i in range(warmup_iters):
+    for i in range(warmup_iter_num):
         input_data = dataloader.gen_data(i)
-        infer_engine.infer(input_data)
-    infer_engine.mode_speed_test()
-    for i in range(test_iters):
-        input_data = dataloader.gen_data(i)
-        infer_engine.infer(input_data)
+        infer_engine.preprocess(input_data)
+        infer_engine.inference()
+        infer_engine.postprocess()
+    normal_test(infer_engine, dataloader, test_iter_num, timer)
 
 
 def parse_args():
