@@ -125,6 +125,14 @@ class Engine(object):
 
         # build dataloader
         if self.mode == 'train':
+            if self.config["DataLoader"]["GraphSampler"]:
+                self.gs_dataloader = build_dataloader(
+                    self.config["DataLoader"], "GraphSampler", self.device,
+                    self.use_dali)
+                self.build_neighbour_map = evaluation.build_neighbour_map
+            else:
+                self.gs_dataloader = None
+
             self.train_dataloader = build_dataloader(
                 self.config["DataLoader"], "Train", self.device, self.use_dali)
             if self.config["DataLoader"].get('UnLabelTrain', None) is not None:
@@ -388,6 +396,8 @@ class Engine(object):
 
         for epoch_id in range(best_metric["epoch"] + 1,
                               self.config["Global"]["epochs"] + 1):
+            if self.gs_dataloader:
+                self.build_neighbour_map(self)
             acc = 0.0
             # for one epoch train
             self.train_epoch_func(self, epoch_id, print_batch_step)

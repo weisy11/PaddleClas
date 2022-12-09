@@ -15,3 +15,4 @@
 from ppcls.engine.evaluation.classification import classification_eval
 from ppcls.engine.evaluation.retrieval import retrieval_eval
 from ppcls.engine.evaluation.adaface import adaface_eval
+from ppcls.engine.evaluation.gs_build_neighbour_map import build_neighbour_map

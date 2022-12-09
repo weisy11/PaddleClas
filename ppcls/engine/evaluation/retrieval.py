@@ -141,6 +141,8 @@ def cal_feature(engine, name='gallery'):
         dataloader = engine.query_dataloader
     elif name == 'gallery_query':
         dataloader = engine.gallery_query_dataloader
+    elif name == "graph_sampler":
+        dataloader = engine.gs_dataloader
     else:
         raise RuntimeError("Only support gallery or query dataset")
 

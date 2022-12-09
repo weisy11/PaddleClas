@@ -42,6 +42,7 @@ from ppcls.data.dataloader.DistributedRandomIdentitySampler import DistributedRa
 from ppcls.data.dataloader.pk_sampler import PKSampler
 from ppcls.data.dataloader.mix_sampler import MixSampler
 from ppcls.data.dataloader.multi_scale_sampler import MultiScaleSampler
+from ppcls.data.dataloader.graph_sampler import GraphSampler
 from ppcls.data import preprocess
 from ppcls.data.preprocess import transform
 
@@ -87,8 +88,9 @@ def worker_init_fn(worker_id: int, num_workers: int, rank: int, seed: int):
 
 def build_dataloader(config, mode, device, use_dali=False, seed=None):
     assert mode in [
-        'Train', 'Eval', 'Test', 'Gallery', 'Query', 'UnLabelTrain'
-    ], "Dataset mode should be Train, Eval, Test, Gallery, Query, UnLabelTrain"
+        'Train', 'Eval', 'Test', 'Gallery', 'Query', 'UnLabelTrain',
+        "GraphSampler"
+    ], "Dataset mode should be Train, Eval, Test, Gallery, Query, UnLabelTrain, GraphSampler"
     assert mode in config.keys(), "{} config not in yaml".format(mode)
     # build dataset
     if use_dali:
@@ -182,6 +184,8 @@ def build_dataloader(config, mode, device, use_dali=False, seed=None):
             batch_sampler=batch_sampler,
             collate_fn=batch_collate_fn,
             worker_init_fn=init_fn)
+        if isinstance(batch_sampler, GraphSampler):
+            data_loader.set_neighbour_map = batch_sampler.set_neighbour_map
 
     logger.debug("build data_loader({}) success...".format(data_loader))
     return data_loader
