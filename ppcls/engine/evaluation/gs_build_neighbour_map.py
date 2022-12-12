@@ -16,17 +16,29 @@ import paddle
 from ppcls.engine.evaluation.retrieval import cal_feature
 
 
-def build_neighbour_map(engine):
-    features, label, _ = cal_feature(engine, "graph_sampler")
-    sim_block_size = engine.config["Global"].get("sim_block_size", 64)
-    neighbour_map = {}
-    sections = [sim_block_size] * (len(features) // sim_block_size)
-    if len(features) % sim_block_size:
-        sections.append(len(features) % sim_block_size)
+class GraphBuilder:
+    def __init__(self, engine, topk=10, sim_upper_bound=0.99):
+        self.engine = engine
+        self.topk = topk
+        self.sim_upper_bound = sim_upper_bound
 
-    fea_blocks = paddle.split(features, num_or_sections=sections)
-    label_blocks = paddle.split(label, num_or_sections=sections)
-    for block_idx, block_fea in enumerate(fea_blocks):
-        similarity_matrix = paddle.matmul(
-            block_fea, features, transpose_y=True)
-        neighbour_index_list = paddle.argmax(similarity_matrix, axis=0)
+    def build_neighbour_map(self):
+        features, label, _ = cal_feature(self.engine, "graph_sampler")
+        sim_block_size = self.engine.config["Global"].get("sim_block_size", 64)
+        neighbour_map = {}
+        sections = [sim_block_size] * (len(features) // sim_block_size)
+        if len(features) % sim_block_size:
+            sections.append(len(features) % sim_block_size)
+
+        fea_blocks = paddle.split(features, num_or_sections=sections)
+        label_blocks = paddle.split(label, num_or_sections=sections)
+        for block_idx, block_fea in enumerate(fea_blocks):
+            similarity_matrix = paddle.matmul(
+                block_fea, features, transpose_y=True)
+            similarity_matrix *= (similarity_matrix <= self.sim_upper_bound)
+            neighbour_index_list = paddle.argsort(similarity_matrix, axis=1)
+            for i, args_i in enumerate(neighbour_index_list):
+                label_i = int(label_blocks[block_idx][i])
+                topk_labels = [int(label[i]) for i in args_i[0:self.topk]]
+                neighbour_map[label_i] = topk_labels
+        self.engine.train_dataloader.set_neighbour_map(neighbour_map)
