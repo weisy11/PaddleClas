@@ -156,10 +156,7 @@ class GraphSampler(DistributedBatchSampler):
                 else:
                     neighbour_i = self.neighbour_map[label_i]
                     batch_label_list += np.random.choice(
-                        neighbour_i,
-                        size=self.neighbour_num,
-                        replace=False,
-                        p=self.prob_list)
+                        neighbour_i, size=self.neighbour_num, replace=False)
 
             for label_i in batch_label_list:
                 label_i_indexes = self.label_dict[label_i]
