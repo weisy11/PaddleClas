@@ -36,7 +36,8 @@ class SampleGraphBuilder:
             similarity_matrix = paddle.matmul(
                 block_fea, features, transpose_y=True)
             similarity_matrix *= (similarity_matrix <= self.sim_upper_bound)
-            neighbour_index_list = paddle.argsort(similarity_matrix, axis=1)
+            neighbour_index_list = paddle.argsort(
+                similarity_matrix, axis=1, descending=True)
             for i, args_i in enumerate(neighbour_index_list):
                 label_i = int(label_blocks[block_idx][i])
                 topk_labels = [int(label[i]) for i in args_i[0:self.topk]]
