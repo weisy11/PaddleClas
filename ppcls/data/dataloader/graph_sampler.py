@@ -138,25 +138,30 @@ class GraphSampler(DistributedBatchSampler):
             self.neighbour_num + 1)
         for _ in range(len(self)):
             batch_index = []
+            batch_label_list = []
             center_list = np.random.choice(
                 self.label_list,
                 size=center_num,
                 replace=False,
                 p=self.prob_list)
-            batch_label_list = center_list.copy()
+            batch_label_list.extend(center_list.copy())
             for label_i in center_list:
                 if label_i not in self.neighbour_map:
                     logger.warning("Can not find neighbour of sample {}.",
                                    label_i)
-                    batch_label_list += np.random.choice(
-                        self.label_list,
-                        size=self.neighbour_num,
-                        replace=False,
-                        p=self.prob_list)
+                    batch_label_list.extend(
+                        np.random.choice(
+                            self.label_list,
+                            size=self.neighbour_num,
+                            replace=False,
+                            p=self.prob_list))
                 else:
                     neighbour_i = self.neighbour_map[label_i]
-                    batch_label_list += np.random.choice(
-                        neighbour_i, size=self.neighbour_num, replace=False)
+                    batch_label_list.extend(
+                        np.random.choice(
+                            neighbour_i,
+                            size=self.neighbour_num,
+                            replace=False))
 
             for label_i in batch_label_list:
                 label_i_indexes = self.label_dict[label_i]
