@@ -16,13 +16,13 @@ import paddle
 from ppcls.engine.evaluation.retrieval import cal_feature
 
 
-class GraphBuilder:
+class SampleGraphBuilder:
     def __init__(self, engine, topk=10, sim_upper_bound=0.99):
         self.engine = engine
         self.topk = topk
         self.sim_upper_bound = sim_upper_bound
 
-    def build_neighbour_map(self):
+    def build_sample_graph(self):
         features, label, _ = cal_feature(self.engine, "graph_sampler")
         sim_block_size = self.engine.config["Global"].get("sim_block_size", 64)
         neighbour_map = {}

@@ -44,6 +44,7 @@ from ppcls.data import create_operators
 from ppcls.engine import train as train_method
 from ppcls.engine.train.utils import type_name
 from ppcls.engine import evaluation
+from ppcls.engine.evaluation.gs_build_neighbour_map import SampleGraphBuilder
 from ppcls.arch.gears.identity_head import IdentityHead
 
 
@@ -129,7 +130,8 @@ class Engine(object):
                 self.gs_dataloader = build_dataloader(
                     self.config["DataLoader"], "GraphSampler", self.device,
                     self.use_dali)
-                self.build_neighbour_map = evaluation.build_neighbour_map
+                self.sample_graph_builder = SampleGraphBuilder(self.config[
+                    "DataLoader"]["SampleGraph"])
             else:
                 self.gs_dataloader = None
 
@@ -397,7 +399,7 @@ class Engine(object):
         for epoch_id in range(best_metric["epoch"] + 1,
                               self.config["Global"]["epochs"] + 1):
             if self.gs_dataloader:
-                self.build_neighbour_map(self)
+                self.sample_graph_builder.build_sample_graph()
             acc = 0.0
             # for one epoch train
             self.train_epoch_func(self, epoch_id, print_batch_step)
