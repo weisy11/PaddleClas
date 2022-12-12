@@ -44,7 +44,7 @@ from ppcls.data import create_operators
 from ppcls.engine import train as train_method
 from ppcls.engine.train.utils import type_name
 from ppcls.engine import evaluation
-from ppcls.engine.evaluation.gs_build_neighbour_map import SampleGraphBuilder
+from ppcls.engine.evaluation.build_sample_graph import SampleGraphBuilder
 from ppcls.arch.gears.identity_head import IdentityHead
 
 
