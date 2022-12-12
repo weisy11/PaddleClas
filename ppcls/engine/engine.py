@@ -130,8 +130,9 @@ class Engine(object):
                 self.gs_dataloader = build_dataloader(
                     self.config["DataLoader"], "GraphSampler", self.device,
                     self.use_dali)
-                self.sample_graph_builder = SampleGraphBuilder(self.config[
-                    "DataLoader"]["SampleGraph"])
+                self.sample_graph_builder = SampleGraphBuilder(
+                    self, **self.config["DataLoader"]["GraphSampler"][
+                        "sample_graph_builder"])
             else:
                 self.gs_dataloader = None
 
