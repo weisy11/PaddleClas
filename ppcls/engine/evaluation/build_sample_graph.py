@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
+import paddle.distributed as dist
 
 from ppcls.engine.evaluation.retrieval import cal_feature
 from ppcls.utils import logger
@@ -24,7 +25,7 @@ class SampleGraphBuilder:
         self.sim_upper_bound = sim_upper_bound
 
     def build_sample_graph(self):
-        features, label, _ = cal_feature(self.engine, "graph_sampler")
+        features, all_labels, _ = cal_feature(self.engine, "graph_sampler")
         sim_block_size = self.engine.config["Global"].get("sim_block_size", 64)
         neighbour_map = {}
         sections = [sim_block_size] * (len(features) // sim_block_size)
@@ -32,10 +33,10 @@ class SampleGraphBuilder:
             sections.append(len(features) % sim_block_size)
 
         fea_blocks = paddle.split(features, num_or_sections=sections)
-        label_blocks = paddle.split(label, num_or_sections=sections)
-        if paddle.distributed.get_world_size() > 1:
-            rank = paddle.dist.get_rank()
-            num_replicas = paddle.dist.get_world_size()
+        label_blocks = paddle.split(all_labels, num_or_sections=sections)
+        if dist.get_world_size() > 1:
+            rank = dist.get_rank()
+            num_replicas = dist.get_world_size()
             fea_blocks = fea_blocks[rank * len(fea_blocks) // num_replicas:(
                 rank + 1) * len(fea_blocks) // num_replicas]
             label_blocks = label_blocks[rank * len(
@@ -53,15 +54,21 @@ class SampleGraphBuilder:
                 block_fea, features, transpose_y=True)
             similarity_matrix *= (similarity_matrix <= self.sim_upper_bound)
             neighbour_index_list = paddle.argsort(
-                similarity_matrix, axis=1, descending=True)
-            if paddle.distributed.get_world_size() > 1:
+                similarity_matrix, axis=1, descending=True)[:, :self.topk]
+            center_labels = paddle.concat([i for i in label_blocks[block_idx]])
+            if dist.get_world_size() > 1:
                 neighbour_index_list_gather = []
-                paddle.distributed.all_gather(neighbour_index_list_gather,
-                                              neighbour_index_list)
+                dist.all_gather(neighbour_index_list_gather,
+                                neighbour_index_list)
                 neighbour_index_list = paddle.concat(
                     neighbour_index_list_gather)
+                center_labels_gather = []
+                dist.all_gather(center_labels_gather, center_labels)
+                center_labels = paddle.concat(center_labels_gather)
+
             for i, args_i in enumerate(neighbour_index_list):
-                label_i = int(label_blocks[block_idx][i])
-                topk_labels = [int(label[i]) for i in args_i[0:self.topk]]
-                neighbour_map[label_i] = topk_labels
+                center_i = center_labels[i]
+                topk_labels = [int(all_labels[j]) for j in args_i]
+                neighbour_map[int(center_i)] = topk_labels
+
         self.engine.train_dataloader.set_neighbour_map(neighbour_map)
