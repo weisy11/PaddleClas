@@ -126,12 +126,12 @@ class Engine(object):
 
         # build dataloader
         if self.mode == 'train':
-            if self.config["DataLoader"]["GraphSampler"]:
+            if self.config["DataLoader"]["GraphBuilder"]:
                 self.gs_dataloader = build_dataloader(
-                    self.config["DataLoader"], "GraphSampler", self.device,
+                    self.config["DataLoader"], "GraphBuilder", self.device,
                     self.use_dali)
                 self.sample_graph_builder = SampleGraphBuilder(
-                    self, **self.config["DataLoader"]["GraphSampler"][
+                    self, **self.config["DataLoader"]["GraphBuilder"][
                         "sample_graph_builder"])
             else:
                 self.gs_dataloader = None

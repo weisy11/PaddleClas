@@ -89,8 +89,8 @@ def worker_init_fn(worker_id: int, num_workers: int, rank: int, seed: int):
 def build_dataloader(config, mode, device, use_dali=False, seed=None):
     assert mode in [
         'Train', 'Eval', 'Test', 'Gallery', 'Query', 'UnLabelTrain',
-        "GraphSampler"
-    ], "Dataset mode should be Train, Eval, Test, Gallery, Query, UnLabelTrain, GraphSampler"
+        "GraphBuilder"
+    ], "Dataset mode should be Train, Eval, Test, Gallery, Query, UnLabelTrain, GraphBuilder"
     assert mode in config.keys(), "{} config not in yaml".format(mode)
     # build dataset
     if use_dali:
