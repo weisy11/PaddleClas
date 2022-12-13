@@ -14,6 +14,7 @@
 import paddle
 
 from ppcls.engine.evaluation.retrieval import cal_feature
+from ppcls.utils import logger
 
 
 class SampleGraphBuilder:
@@ -32,12 +33,33 @@ class SampleGraphBuilder:
 
         fea_blocks = paddle.split(features, num_or_sections=sections)
         label_blocks = paddle.split(label, num_or_sections=sections)
+        if paddle.distributed.get_world_size() > 1:
+            rank = paddle.dist.get_rank()
+            num_replicas = paddle.dist.get_world_size()
+            fea_blocks = fea_blocks[rank * len(fea_blocks) // num_replicas:(
+                rank + 1) * len(fea_blocks) // num_replicas]
+            label_blocks = label_blocks[rank * len(
+                label_blocks) // num_replicas:(rank + 1) * len(label_blocks) //
+                                        num_replicas]
+
         for block_idx, block_fea in enumerate(fea_blocks):
+
+            if block_idx % self.engine.config["Global"][
+                    "print_batch_step"] == 0:
+                logger.info(
+                    f"build sample graph process: [{block_idx}/{len(fea_blocks)}]"
+                )
             similarity_matrix = paddle.matmul(
                 block_fea, features, transpose_y=True)
             similarity_matrix *= (similarity_matrix <= self.sim_upper_bound)
             neighbour_index_list = paddle.argsort(
                 similarity_matrix, axis=1, descending=True)
+            if paddle.distributed.get_world_size() > 1:
+                neighbour_index_list_gather = []
+                paddle.distributed.all_gather(neighbour_index_list_gather,
+                                              neighbour_index_list)
+                neighbour_index_list = paddle.concat(
+                    neighbour_index_list_gather)
             for i, args_i in enumerate(neighbour_index_list):
                 label_i = int(label_blocks[block_idx][i])
                 topk_labels = [int(label[i]) for i in args_i[0:self.topk]]

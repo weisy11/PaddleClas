@@ -400,7 +400,9 @@ class Engine(object):
         for epoch_id in range(best_metric["epoch"] + 1,
                               self.config["Global"]["epochs"] + 1):
             if self.gs_dataloader:
+                self.model.eval()
                 self.sample_graph_builder.build_sample_graph()
+                self.model.train()
             acc = 0.0
             # for one epoch train
             self.train_epoch_func(self, epoch_id, print_batch_step)
