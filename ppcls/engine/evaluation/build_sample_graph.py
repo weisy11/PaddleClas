@@ -14,7 +14,7 @@
 import paddle
 import paddle.distributed as dist
 
-from ppcls.engine.evaluation.retrieval import cal_feature
+from ppcls.engine.evaluation.retrieval import cal_feature, gather_dist_tensors
 from ppcls.utils import logger
 
 
@@ -25,50 +25,51 @@ class SampleGraphBuilder:
         self.sim_upper_bound = sim_upper_bound
 
     def build_sample_graph(self):
-        features, all_labels, _ = cal_feature(self.engine, "graph_sampler")
+        all_feats, all_labels, _ = cal_feature(self.engine, "graph_sampler")
         sim_block_size = self.engine.config["Global"].get("sim_block_size", 64)
-        neighbour_map = {}
-        sections = [sim_block_size] * (len(features) // sim_block_size)
-        if len(features) % sim_block_size:
-            sections.append(len(features) % sim_block_size)
+        # nbr short for neighbour
+        nbr_map = {}
+        sections = [sim_block_size] * (len(all_feats) // sim_block_size)
+        if len(all_feats) % sim_block_size:
+            sections.append(len(all_feats) % sim_block_size)
 
-        fea_blocks = paddle.split(features, num_or_sections=sections)
+        feats_blocks = paddle.split(all_feats, num_or_sections=sections)
         label_blocks = paddle.split(all_labels, num_or_sections=sections)
         if dist.get_world_size() > 1:
-            rank = dist.get_rank()
-            num_replicas = dist.get_world_size()
-            fea_blocks = fea_blocks[rank * len(fea_blocks) // num_replicas:(
-                rank + 1) * len(fea_blocks) // num_replicas]
-            label_blocks = label_blocks[rank * len(
-                label_blocks) // num_replicas:(rank + 1) * len(label_blocks) //
-                                        num_replicas]
+            r = dist.get_rank()
+            n = dist.get_world_size()
+            if len(feats_blocks) % n:
+                expand = 1
+            else:
+                expand = 0
+            feats_blocks = feats_blocks[r * len(feats_blocks) // n:(r + 1) *
+                                        len(feats_blocks) // n]
+            label_blocks = label_blocks[r * len(label_blocks) // n:(r + 1) *
+                                        len(label_blocks) // n]
+            if expand:
+                feats_blocks.append(feats_blocks[0])
+                label_blocks.append(-1)
 
-        for block_idx, block_fea in enumerate(fea_blocks):
+        for i, feats_i in enumerate(feats_blocks):
 
-            if block_idx % self.engine.config["Global"][
-                    "print_batch_step"] == 0:
+            if i % self.engine.config["Global"]["print_batch_step"] == 0:
                 logger.info(
-                    f"build sample graph process: [{block_idx}/{len(fea_blocks)}]"
-                )
-            similarity_matrix = paddle.matmul(
-                block_fea, features, transpose_y=True)
-            similarity_matrix *= (similarity_matrix <= self.sim_upper_bound)
-            neighbour_index_list = paddle.argsort(
-                similarity_matrix, axis=1, descending=True)[:, :self.topk]
-            center_labels = paddle.concat([i for i in label_blocks[block_idx]])
+                    f"build sample graph process: [{i}/{len(feats_blocks)}]")
+            sim_matrix = paddle.matmul(feats_i, all_feats, transpose_y=True)
+            sim_matrix *= (sim_matrix <= self.sim_upper_bound)
+            nbr_idx_list = paddle.argsort(
+                sim_matrix, axis=1, descending=True)[:, :self.topk]
+            center_labels = paddle.concat(
+                [center_i for center_i in label_blocks[i]])
             if dist.get_world_size() > 1:
-                neighbour_index_list_gather = []
-                dist.all_gather(neighbour_index_list_gather,
-                                neighbour_index_list)
-                neighbour_index_list = paddle.concat(
-                    neighbour_index_list_gather)
-                center_labels_gather = []
-                dist.all_gather(center_labels_gather, center_labels)
-                center_labels = paddle.concat(center_labels_gather)
+                nbr_idx_list = gather_dist_tensors(nbr_idx_list)
+                center_labels = gather_dist_tensors(center_labels)
 
-            for i, args_i in enumerate(neighbour_index_list):
-                center_i = center_labels[i]
-                topk_labels = [int(all_labels[j]) for j in args_i]
-                neighbour_map[int(center_i)] = topk_labels
+            for j, nbx_idx_j in enumerate(nbr_idx_list):
+                center_i = center_labels[j]
+                if center_i == -1:
+                    continue
+                topk_labels = [int(all_labels[k]) for k in nbx_idx_j]
+                nbr_map[int(center_i)] = topk_labels
 
-        self.engine.train_dataloader.set_neighbour_map(neighbour_map)
+        self.engine.train_dataloader.set_neighbour_map(nbr_map)

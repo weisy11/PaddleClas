@@ -20,6 +20,8 @@ from typing import Optional
 
 import numpy as np
 import paddle
+import paddle.distributed as dist
+
 from ppcls.engine.train.utils import type_name
 from ppcls.utils import logger
 
@@ -146,7 +148,7 @@ def cal_feature(engine, name='gallery'):
     else:
         raise RuntimeError("Only support gallery or query dataset")
 
-    batch_feas_list = []
+    all_feats_list = []
     img_id_list = []
     unique_id_list = []
     max_iter = len(dataloader) - 1 if platform.system() == "Windows" else len(
@@ -180,37 +182,33 @@ def cal_feature(engine, name='gallery'):
         if engine.config["Global"].get("retrieval_feature_from",
                                        "features") == "features":
             # use neck's output as features
-            batch_feas = out["features"]
+            batch_feats = out["features"]
         else:
             # use backbone's output as features
-            batch_feas = out["backbone"]
+            batch_feats = out["backbone"]
 
         # do norm
         if engine.config["Global"].get("feature_normalize", True):
             feas_norm = paddle.sqrt(
-                paddle.sum(paddle.square(batch_feas), axis=1, keepdim=True))
-            batch_feas = paddle.divide(batch_feas, feas_norm)
+                paddle.sum(paddle.square(batch_feats), axis=1, keepdim=True))
+            batch_feats = paddle.divide(batch_feats, feas_norm)
 
         # do binarize
         if engine.config["Global"].get("feature_binarize") == "round":
-            batch_feas = paddle.round(batch_feas).astype("float32") * 2.0 - 1.0
+            batch_feats = paddle.round(batch_feats).astype(
+                "float32") * 2.0 - 1.0
 
         if engine.config["Global"].get("feature_binarize") == "sign":
-            batch_feas = paddle.sign(batch_feas).astype("float32")
+            batch_feats = paddle.sign(batch_feats).astype("float32")
 
-        if paddle.distributed.get_world_size() > 1:
-            batch_feas_gather = []
-            img_id_gather = []
-            unique_id_gather = []
-            paddle.distributed.all_gather(batch_feas_gather, batch_feas)
-            paddle.distributed.all_gather(img_id_gather, batch[1])
-            batch_feas_list.append(paddle.concat(batch_feas_gather))
-            img_id_list.append(paddle.concat(img_id_gather))
+        if dist.get_world_size() > 1:
+            all_feats_list.append(gather_dist_tensors(batch_feats))
+            img_id_list.append(gather_dist_tensors(batch[1]))
+
             if has_unique_id:
-                paddle.distributed.all_gather(unique_id_gather, batch[2])
-                unique_id_list.append(paddle.concat(unique_id_gather))
+                unique_id_list.append(gather_dist_tensors(batch[2]))
         else:
-            batch_feas_list.append(batch_feas)
+            all_feats_list.append(batch_feats)
             img_id_list.append(batch[1])
             if has_unique_id:
                 unique_id_list.append(batch[2])
@@ -218,7 +216,7 @@ def cal_feature(engine, name='gallery'):
     if engine.use_dali:
         dataloader.reset()
 
-    all_feas = paddle.concat(batch_feas_list)
+    all_feats = paddle.concat(all_feats_list)
     all_img_id = paddle.concat(img_id_list)
     if has_unique_id:
         all_unique_id = paddle.concat(unique_id_list)
@@ -226,14 +224,33 @@ def cal_feature(engine, name='gallery'):
     # just for DistributedBatchSampler issue: repeat sampling
     total_samples = len(
         dataloader.dataset) if not engine.use_dali else dataloader.size
-    all_feas = all_feas[:total_samples]
+    all_feats = all_feats[:total_samples]
     all_img_id = all_img_id[:total_samples]
     if has_unique_id:
         all_unique_id = all_unique_id[:total_samples]
 
     logger.info("Build {} done, all feat shape: {}, begin to eval..".format(
-        name, all_feas.shape))
-    return all_feas, all_img_id, all_unique_id
+        name, all_feats.shape))
+    return all_feats, all_img_id, all_unique_id
+
+
+def gather_dist_tensors(tensor_dist):
+    length_dist = []
+    dist.all_gather(length_dist, paddle.to_tensor(len(tensor_dist)))
+    max_length = max(length_dist)
+    batch_feats_dist = []
+    if len(tensor_dist.shape) > 1:
+        batch_feats_ex = paddle.zeros(
+            [max_length, tensor_dist.shape[1]], dtype=tensor_dist.dtype)
+    else:
+        batch_feats_ex = paddle.zeros([max_length], dtype=tensor_dist.dtype)
+    batch_feats_ex[0:len(tensor_dist), :] = tensor_dist
+    dist.all_gather(batch_feats_dist, batch_feats_ex)
+    batch_feats_dist = [
+        batch_feats_dist[i][0:length_dist[i]]
+        for i in range(len(length_dist))
+    ]
+    return paddle.concat(batch_feats_dist)
 
 
 def re_ranking(query_feas: paddle.Tensor,
