@@ -242,9 +242,11 @@ def gather_dist_tensors(tensor_dist):
     if len(tensor_dist.shape) > 1:
         batch_feats_ex = paddle.zeros(
             [max_length, tensor_dist.shape[1]], dtype=tensor_dist.dtype)
+        batch_feats_ex[0:len(tensor_dist), :] = tensor_dist
     else:
         batch_feats_ex = paddle.zeros([max_length], dtype=tensor_dist.dtype)
-    batch_feats_ex[0:len(tensor_dist), :] = tensor_dist
+        batch_feats_ex[0:len(tensor_dist)] = tensor_dist
+
     dist.all_gather(batch_feats_dist, batch_feats_ex)
     batch_feats_dist = [
         batch_feats_dist[i][0:length_dist[i]]
