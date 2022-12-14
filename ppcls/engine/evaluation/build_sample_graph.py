@@ -48,7 +48,10 @@ class SampleGraphBuilder:
                                         len(label_blocks) // n]
             if expand:
                 feats_blocks.append(feats_blocks[0])
-                label_blocks.append(-1)
+                fake_labels = paddle.zeros(
+                    [len(feats_blocks[0]), 1], dtype='int64')
+                fake_labels -= 1
+                label_blocks.append(fake_labels)
 
         for i, feats_i in enumerate(feats_blocks):
 
