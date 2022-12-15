@@ -94,8 +94,9 @@ class GraphSampler(DistributedBatchSampler):
         self.sample_per_id = sample_per_id
         self.label_dict = defaultdict(list)
         self.total_epochs = total_epochs
-        self.neighbour_num = neighbour_num
-        self.neighbour_map = {}
+        # nbr short for neighbour
+        self.nbr_num = neighbour_num
+        self.nbr_map = {}
         for idx, label in enumerate(self.dataset.labels):
             self.label_dict[label].append(idx)
         self.label_list = list(self.label_dict)
@@ -124,7 +125,7 @@ class GraphSampler(DistributedBatchSampler):
                     format(diff))
 
     def set_neighbour_map(self, neighbour_map):
-        self.neighbour_map = neighbour_map
+        self.nbr_map = neighbour_map
 
     def __iter__(self):
         # shuffle manually, same as DistributedBatchSampler.__iter__
@@ -135,9 +136,9 @@ class GraphSampler(DistributedBatchSampler):
             self.epoch += 1
 
         center_num = self.batch_size // self.sample_per_id // (
-            self.neighbour_num + 1)
+            self.nbr_num + 1)
         for _ in range(len(self)):
-            batch_index = []
+            batch_idx = []
             batch_label_list = []
             center_list = np.random.choice(
                 self.label_list,
@@ -146,36 +147,33 @@ class GraphSampler(DistributedBatchSampler):
                 p=self.prob_list)
             batch_label_list.extend(center_list.copy())
             for label_i in center_list:
-                if label_i not in self.neighbour_map:
+                if label_i not in self.nbr_map:
                     logger.warning("Can not find neighbour of sample {}.",
                                    label_i)
                     batch_label_list.extend(
                         np.random.choice(
                             self.label_list,
-                            size=self.neighbour_num,
+                            size=self.nbr_num,
                             replace=False,
                             p=self.prob_list))
                 else:
-                    neighbour_i = self.neighbour_map[label_i]
+                    neighbour_i = self.nbr_map[label_i]
                     batch_label_list.extend(
                         np.random.choice(
-                            neighbour_i,
-                            size=self.neighbour_num,
-                            replace=False))
+                            neighbour_i, size=self.nbr_num, replace=False))
 
             for label_i in batch_label_list:
-                label_i_indexes = self.label_dict[label_i]
-                if self.sample_per_id <= len(label_i_indexes):
-                    batch_index.extend(
+                label_i_idx = self.label_dict[label_i]
+                if self.sample_per_id <= len(label_i_idx):
+                    batch_idx.extend(
                         np.random.choice(
-                            label_i_indexes,
+                            label_i_idx,
                             size=self.sample_per_id,
                             replace=False))
                 else:
-                    batch_index.extend(
+                    batch_idx.extend(
                         np.random.choice(
-                            label_i_indexes,
-                            size=self.sample_per_id,
+                            label_i_idx, size=self.sample_per_id,
                             replace=True))
-            if not self.drop_last or len(batch_index) == self.batch_size:
-                yield batch_index
+            if not self.drop_last or len(batch_idx) == self.batch_size:
+                yield batch_idx
