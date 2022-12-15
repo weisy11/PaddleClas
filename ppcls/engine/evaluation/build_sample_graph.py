@@ -19,14 +19,20 @@ from ppcls.utils import logger
 
 
 class SampleGraphBuilder:
-    def __init__(self, engine, topk=10, sim_upper_bound=0.99):
+    def __init__(self,
+                 engine,
+                 topk=10,
+                 sim_upper_bound=0.99,
+                 sim_block_size=64):
         self.engine = engine
         self.topk = topk
         self.sim_upper_bound = sim_upper_bound
+        self.sim_block_size = sim_block_size
 
     def build_sample_graph(self):
         all_feats, all_labels, _ = cal_feature(self.engine, "graph_sampler")
-        sim_block_size = self.engine.config["Global"].get("sim_block_size", 64)
+        sim_block_size = self.engine.config["Global"].get("sim_block_size",
+                                                          self.sim_block_size)
         # nbr short for neighbour
         nbr_map = {}
         sections = [sim_block_size] * (len(all_feats) // sim_block_size)
