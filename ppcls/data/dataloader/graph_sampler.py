@@ -161,6 +161,16 @@ class GraphSampler(DistributedBatchSampler):
                     batch_label_list.extend(
                         np.random.choice(
                             neighbour_i, size=self.nbr_num, replace=False))
+            batch_label_set = set(batch_label_list)
+            while len(batch_label_set) < center_num * (self.nbr_num + 1):
+                batch_label_set = batch_label_set.union(
+                    np.random.choice(
+                        self.label_list,
+                        size=center_num * (self.nbr_num + 1) - len(
+                            batch_label_set),
+                        replace=False,
+                        p=self.prob_list))
+            batch_label_list = list(batch_label_set)
 
             for label_i in batch_label_list:
                 label_i_idx = self.label_dict[label_i]

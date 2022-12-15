@@ -39,14 +39,14 @@ class SampleGraphBuilder:
             r = dist.get_rank()
             n = dist.get_world_size()
             if len(feats_blocks) % n:
-                expand = 1
+                l = len(feats_blocks) // n + 1
             else:
-                expand = 0
+                l = len(feats_blocks) // n
             feats_blocks = feats_blocks[r * len(feats_blocks) // n:(r + 1) *
                                         len(feats_blocks) // n]
             label_blocks = label_blocks[r * len(label_blocks) // n:(r + 1) *
                                         len(label_blocks) // n]
-            if expand:
+            if len(feats_blocks) < l:
                 feats_blocks.append(feats_blocks[0])
                 fake_labels = paddle.zeros(
                     [len(feats_blocks[0]), 1], dtype='int64')
