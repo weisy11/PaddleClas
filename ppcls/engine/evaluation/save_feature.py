@@ -14,9 +14,12 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+import os
 import time
 import platform
 import paddle
+import numpy as np
 
 from ppcls.utils.misc import AverageMeter
 from ppcls.utils import logger
@@ -50,7 +53,15 @@ def save_feature_eval(engine, epoch_id=0):
         out = engine.model(batch[0])
 
         labels = batch[1]
-        preds = out
+        preds = out[:, 0, :]
+        for i, label_i in enumerate(labels):
+            pred_i = preds[i]
+            save_path = label_i.replace('images', 'features').replace('JPEG',
+                                                                      'npy')
+            save_home = '/'.join(save_path.split('/')[:-1])
+            if not os.path.exists(save_home):
+                os.makedirs(save_home)
+            np.save(save_path, pred_i)
 
         time_info["batch_cost"].update(time.time() - tic)
 
