@@ -78,7 +78,7 @@ class Engine(object):
 
         # init train_func and eval_func
         assert self.eval_mode in [
-            "classification", "retrieval", "adaface"
+            "classification", "retrieval", "adaface", "save_feature"
         ], logger.error("Invalid eval mode: {}".format(self.eval_mode))
         if self.train_mode is None:
             self.train_epoch_func = train_method.train_epoch
@@ -145,7 +145,7 @@ class Engine(object):
 
         if self.mode == "eval" or (self.mode == "train" and
                                    self.config["Global"]["eval_during_train"]):
-            if self.eval_mode in ["classification", "adaface"]:
+            if self.eval_mode in ["classification", "adaface", "save_feature"]:
                 self.eval_dataloader = build_dataloader(
                     self.config["DataLoader"], "Eval", self.device,
                     self.use_dali)
