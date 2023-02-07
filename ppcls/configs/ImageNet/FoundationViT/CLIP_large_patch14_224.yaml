@@ -46,9 +46,9 @@ Optimizer:
 DataLoader:
   Train:
     dataset:
-      name: ImageNetDataset
-      image_root: ./dataset/ILSVRC2012/
-      cls_label_path: ./dataset/ILSVRC2012/train_list.txt
+      name: Path2LabelDataset
+      image_root: ./dataset/imagenet22k/
+      cls_label_path: ./dataset/imagenet22k/list_file.txt
       transform_ops:
         - DecodeImage:
             to_rgb: True
