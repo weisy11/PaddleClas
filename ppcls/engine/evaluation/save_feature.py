@@ -59,8 +59,7 @@ def save_feature_eval(engine, epoch_id=0):
             save_path = label_i.replace('images', 'features').replace('JPEG',
                                                                       'npy')
             save_home = '/'.join(save_path.split('/')[:-1])
-            if not os.path.exists(save_home):
-                os.makedirs(save_home)
+            os.makedirs(save_home, exist_ok=True)
             np.save(save_path, pred_i)
 
         time_info["batch_cost"].update(time.time() - tic)
