@@ -2,13 +2,17 @@ import glob
 import numpy as np
 import pickle
 from multiprocessing import Process
+import os
 
 
 def get_features(file_list):
-    feature = np.load(file_list[0]).reshape((1024, 1))
+    feature_list = []
     for i in range(1, len(file_list)):
         feature_i = np.load(file_list[i]).reshape((1024, 1))
-        feature = np.concatenate([feature, feature_i], axis=1)
+        norm = np.sqrt(feature_i @feature_i.T)
+        feature_i = feature_i / norm
+        feature_list.append(feature_i)
+    feature = np.concatenate(feature_list, axis=1)
     return feature
 
 
@@ -28,14 +32,18 @@ def compare_features(val_feature_folder,
         worker_id + 1) // num_workers]
     l1 = len(local_file_list)
     for i in range(0, l1, step):
+        if worker_id == 0:
+            print("worker0 step: ", i)
         step_files = local_file_list[i:i + step]
         features = get_features(step_files)
         sim = features @val_features.T
-        max_sim = np.max(sim, axis=0)
+        max_sim = np.max(sim, axis=1)
         indexes = np.where(max_sim > threshold)
-        black_list.extend(step_files[indexes])
+        for j in indexes:
+            black_list.append(step_files[j])
     output_file = "{}/{}.pkl".format(output_folder, worker_id)
-    with open(output_file, 'w') as f:
+
+    with open(output_file, 'wb') as f:
         pickle.dump(black_list, f)
 
 
