@@ -33,7 +33,7 @@ def cluster(feature,
     if level == total_level:
         save_result(feature, path_list, center_feature, output_path)
         return
-    total_cluster_num = cluster_per_level**level
+    total_cluster_num = cluster_per_level**(level + 1)
     num_per_cluster = total_num // total_cluster_num
     current_num = feature.shape[0]
     current_cluster_num = current_num // num_per_cluster
@@ -72,22 +72,27 @@ def cluster(feature,
 
 
 def main():
-    data_home = ""
-    list_file = ""
+    data_home = "dataset/ImageNet22k"
+    list_file = "dataset/ImageNet22k/image_list_21k.txt"
     with open(list_file, 'r') as f:
         raw = f.read()
     feature_path_list = []
     feature_list = []
+    miss_feature_list = []
     for raw_i in raw.split('\n'):
         image_path, _ = raw_i.split(" ")
         feature_path = "{}/{}".format(
             data_home,
             image_path.replace("images", "features").replace("JPEG", "npy"))
+        if not os.path.exists(feature_path):
+            miss_feature_list.append(feature_path)
+            continue
         feature_path_list.append(feature_path)
         feature_i = np.load(feature_path).reshape((1, 1024))
         norm = np.sqrt(feature_i @feature_i.T)
         feature_i = feature_i / norm
         feature_list.append(feature_i)
+    print('miss features: ', miss_feature_list)
     feature = np.concatenate(feature_list, axis=0)
     cluster(feature, feature_path_list, 0, 3, len(feature_path_list), 64)
 
