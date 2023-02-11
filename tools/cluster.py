@@ -12,7 +12,8 @@ def save_result(feature, path_list, center_feature, output_path):
     os.makedirs(save_path, exist_ok=True)
     path_raw = ""
     for path_i in path_list:
-        path_raw += "{}\n".format(path_i)
+        path_raw += "{}\n".format(
+            path_i.replace("features", "image").replace("npy", "JPEG"))
     path_raw = path_raw[:-1]
     with open("{}/image_list.txt".format(save_path), "w") as f:
         f.write(path_raw)
