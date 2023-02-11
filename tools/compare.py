@@ -7,19 +7,20 @@ import os
 
 def get_features(file_list):
     feature_list = []
-    for i in range(1, len(file_list)):
+    for i in range(len(file_list)):
         feature_i = np.load(file_list[i]).reshape((1, 1024))
         norm = np.sqrt(feature_i @feature_i.T)
         feature_i = feature_i / norm
         feature_list.append(feature_i)
-    feature = np.concatenate(feature_list, axis=0)
-    return feature
+    if feature_list:
+        feature = np.concatenate(feature_list, axis=0)
+        return feature
 
 
 def compare_features(val_features,
                      all_feature_folder,
                      worker_id=0,
-                     output_folder="",
+                     output_folder="same_feature",
                      num_workers=1,
                      step=4096,
                      threshold=0.95):
@@ -38,7 +39,7 @@ def compare_features(val_features,
         sim = features @val_features.T
         max_sim = np.max(sim, axis=1)
         indexes = np.where(max_sim > threshold)
-        for j in indexes:
+        for j in indexes[0]:
             black_list.append(step_files[j])
     os.makedirs(output_folder, exist_ok=True)
     output_file = "{}/{}.pkl".format(output_folder, worker_id)
@@ -57,7 +58,7 @@ def main():
     for i in range(worker_num):
         p = Process(
             target=compare_features,
-            args=(val_features, all_feature_folder, i))
+            args=(val_features, all_feature_folder, i, 'val_same', 64))
         p.start()
         p_list.append(p)
     for p in p_list:
