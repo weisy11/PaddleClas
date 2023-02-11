@@ -89,7 +89,7 @@ def main():
         feature_i = feature_i / norm
         feature_list.append(feature_i)
     feature = np.concatenate(feature_list, axis=0)
-    cluster(feature, raw.split("\n"), 0, 3, 64)
+    cluster(feature, feature_path_list, 0, 3, len(feature_path_list), 64)
 
 
 if __name__ == '__main__':
