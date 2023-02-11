@@ -72,6 +72,7 @@ def cluster(feature,
 
 
 def main():
+    data_home = ""
     list_file = ""
     with open(list_file, 'r') as f:
         raw = f.read()
@@ -79,8 +80,9 @@ def main():
     feature_list = []
     for raw_i in raw.split('\n'):
         image_path, _ = raw_i.split(" ")
-        feature_path = image_path.rplace("images", "features").replace("JPEG",
-                                                                       "npy")
+        feature_path = "{}/{}".format(
+            data_home,
+            image_path.replace("images", "features").replace("JPEG", "npy"))
         feature_path_list.append(feature_path)
         feature_i = np.load(feature_path).reshape((1, 1024))
         norm = np.sqrt(feature_i @feature_i.T)
