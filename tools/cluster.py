@@ -1,6 +1,7 @@
 import numpy as np
 import faiss
 import os
+from multiprocessing import Queue, Process
 
 
 def save_result(feature, path_list, center_feature, output_path):
@@ -71,16 +72,13 @@ def cluster(feature,
             output_path=output_path)
 
 
-def main():
+def mp_read_worker(image_path_list, queue):
     data_home = "dataset/ImageNet22k"
-    list_file = "dataset/ImageNet22k/image_list_21k.txt"
-    with open(list_file, 'r') as f:
-        raw = f.read()
-    feature_path_list = []
     feature_list = []
     miss_feature_list = []
-    for raw_i in raw.split('\n'):
-        image_path, _ = raw_i.split(" ")
+    feature_path_list = []
+
+    for image_path in image_path_list:
         feature_path = "{}/{}".format(
             data_home,
             image_path.replace("images", "features").replace("JPEG", "npy"))
@@ -94,7 +92,36 @@ def main():
         feature_list.append(feature_i)
     print('miss features: ', miss_feature_list)
     feature = np.concatenate(feature_list, axis=0)
-    cluster(feature, feature_path_list, 0, 3, len(feature_path_list), 64)
+    queue.put(feature)
+
+
+def mp_read(image_path_list, num_workers=64):
+    process_list = []
+    queue_list = []
+    for i in range(num_workers):
+        queue = Queue()
+        queue_list.append(queue)
+        l = len(image_path_list)
+        image_path_list_i = image_path_list[l * i // num_workers:l * (i + 1) //
+                                            num_workers]
+        p = Process(target=mp_read_worker, args=(image_path_list_i, queue))
+        p.start()
+        process_list.append(p)
+    feature_list = []
+    for i in range(num_workers):
+        process_list[i].join()
+        feature_list.append(queue_list[i].get())
+    feature = np.concatenate(feature_list, axis=0)
+    return feature
+
+
+def main():
+    list_file = "dataset/ImageNet22k/image_list_21k.txt"
+    with open(list_file, 'r') as f:
+        raw = f.read()
+    image_path_list = [i.split(" ")[0] for i in raw.split('\n')]
+    feature = mp_read(image_path_list)
+    cluster(feature, image_path_list, 0, 3, len(image_path_list), 64)
 
 
 if __name__ == '__main__':
