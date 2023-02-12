@@ -109,8 +109,8 @@ def mp_read(image_path_list, num_workers=64):
         process_list.append(p)
     feature_list = []
     for i in range(num_workers):
-        process_list[i].join()
         feature_list.append(queue_list[i].get())
+        process_list[i].join()
     feature = np.concatenate(feature_list, axis=0)
     return feature
 
