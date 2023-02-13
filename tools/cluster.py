@@ -56,6 +56,8 @@ def cluster(feature,
             if result_j == i:
                 feature_list_i.append(feature[j].reshape(1, 1024))
                 path_list_i.append(path_list[j])
+        if not feature_list_i:
+            continue
         feature_i = np.concatenate(feature_list_i, axis=0)
         center_feature = kmeans.centroids[i].reshape(1, 1024)
         if not i % 8:
