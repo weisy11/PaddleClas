@@ -14,7 +14,7 @@
 import paddle
 import paddle.distributed as dist
 
-from ppcls.engine.evaluation.retrieval import cal_feature, gather_dist_tensors
+from ppcls.engine.evaluation.retrieval import compute_feature, gather_dist_tensors
 from ppcls.utils import logger
 
 
@@ -30,7 +30,8 @@ class SampleGraphBuilder:
         self.sim_block_size = sim_block_size
 
     def build_sample_graph(self):
-        all_feats, all_labels, _ = cal_feature(self.engine, "graph_sampler")
+        all_feats, all_labels, _ = compute_feature(self.engine,
+                                                   "graph_sampler")
         sim_block_size = self.engine.config["Global"].get("sim_block_size",
                                                           self.sim_block_size)
         # nbr short for neighbour
