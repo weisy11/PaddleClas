@@ -31,8 +31,7 @@ Arch:
   infer_add_softmax: False
 
   Backbone:
-    name: CLIP_vit_large_patch14_224
-    pretrained: models/CLIP_vit_large_patch14_224
+    name: CLIP_vit_base_patch32_224
   Neck:
     name: BNNeck
     num_features: 1024
