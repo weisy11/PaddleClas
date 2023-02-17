@@ -34,7 +34,7 @@ Arch:
     name: CLIP_vit_base_patch32_224
   Neck:
     name: BNNeck
-    num_features: 1024
+    num_features: 768
     weight_attr:
       initializer:
         name: Constant
@@ -46,7 +46,7 @@ Arch:
       learning_rate: 1.0e-20 # NOTE: Temporarily set lr small enough to freeze the bias to zero
   Head:
     name: FC
-    embedding_size: 1024
+    embedding_size: 768
     class_num: 50030
     weight_attr:
       initializer:
