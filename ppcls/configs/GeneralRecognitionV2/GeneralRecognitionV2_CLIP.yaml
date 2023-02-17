@@ -32,14 +32,9 @@ Arch:
 
   Backbone:
     name: PPLCNet_x2_5
-    pretrained: True
-    use_ssld: True
-    class_expand: &feat_dim 512
-  BackboneStopLayer:
-    name: flatten
   Neck:
     name: BNNeck
-    num_features: *feat_dim
+    num_features: 1000
     weight_attr:
       initializer:
         name: Constant
@@ -51,7 +46,7 @@ Arch:
       learning_rate: 1.0e-20 # NOTE: Temporarily set lr small enough to freeze the bias to zero
   Head:
     name: FC
-    embedding_size: *feat_dim
+    embedding_size: 1000
     class_num: 50030
     weight_attr:
       initializer:
