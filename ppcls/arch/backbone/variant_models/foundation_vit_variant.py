@@ -1,7 +1,6 @@
-import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from ..model_zoo.foundation_vit import CLIP_vit_large_patch14_224, _load_pretrained
+from ppcls.arch.backbone.legendary_models.foundation_vit import _load_pretrained
 
 MODEL_URLS = {
     "CLIP_large_patch14_224_aesthetic":
