@@ -31,10 +31,11 @@ Arch:
   infer_add_softmax: False
 
   Backbone:
-    name: PPLCNet_x2_5
+    name: CLIP_vit_large_patch14_224
+    pretrained: models/CLIP_vit_large_patch14_224
   Neck:
     name: BNNeck
-    num_features: 1000
+    num_features: 1024
     weight_attr:
       initializer:
         name: Constant
@@ -46,7 +47,7 @@ Arch:
       learning_rate: 1.0e-20 # NOTE: Temporarily set lr small enough to freeze the bias to zero
   Head:
     name: FC
-    embedding_size: 1000
+    embedding_size: 1024
     class_num: 50030
     weight_attr:
       initializer:
