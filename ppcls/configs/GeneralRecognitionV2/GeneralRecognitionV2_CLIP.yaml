@@ -13,7 +13,7 @@ Global:
   eval_mode: retrieval
   retrieval_feature_from: features # 'backbone' or 'features'
   re_ranking: False
-  use_dali: False
+  use_dali: True
   # used for static mode and model export
   image_shape: [3, 224, 224]
   save_inference_dir: ./inference
